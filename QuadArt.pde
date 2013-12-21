@@ -10,12 +10,13 @@ ColorTheoryStrategy currentTheory;
 ArrayList colorStrategies;
 Iterator I_theories;
 PGraphics img;
+int[] colorMap;
 
 int w = 80;
 int h = int(w / 1.6);
 int init_s = 1280/w;
 int s = init_s;
-int WHITE_PCT = 10;
+int WHITE_PCT = 5;
 
 // x, y, radius, gravity (0-100)
 int[][] magnets = {
@@ -36,16 +37,33 @@ int[][] magnets = {
 
 
 void setup() {
-  
+
   size((w * s), (h * s) );
   img = createGraphics((w * s), (h * s));
   noStroke();
   noLoop();
 
+  noiseDetail(2, .25);
+
   colorStrategies = ColorTheoryRegistry.getRegisteredStrategies();
   currentTheory = ColorTheoryRegistry.TRIAD;
   randomizeColor();
+  colorMap = colorMap();
   resetStrategy();
+}
+
+int[] colorMap() {
+  int[] map = new int[cList.size()];
+  for (int i=0;i<cList.size();i++) {
+    float n = (float) i / cList.size();
+    if (floor(random(0, 100/WHITE_PCT)) == 0) {
+      map[i] = 0;
+    } 
+    else {
+      map[i] = floor(noise(n*1500) * cList.size());
+    }
+  }
+  return map;
 }
 
 void draw() {
@@ -57,9 +75,9 @@ void draw() {
   fill(currentColor.toARGB());
   rect(0, 0, s, s);
   // magenet indicator
-  stroke(255,0,0);
+  stroke(255, 0, 0);
   noFill();
-  ellipse(mouseX, mouseY,magnets[0][3]*s, magnets[0][3]*s);  
+  ellipse(mouseX, mouseY, magnets[0][3]*s, magnets[0][3]*s);
 }
 
 void paintQuads() {
@@ -68,8 +86,13 @@ void paintQuads() {
 
   pushMatrix();
   for (int i = 1; i <= w*h; i++) {
-    //fill(cSortedList.get(i-1).toARGB());
-    fill(getRandColor(gravityToClosestHill(row, col)));
+    //int rnd = floor(noise(i) * w*h);
+    //println(rnd);
+    float r = (float) row / h;
+    float c = (float) col / w;
+    int rnd = floor(noise(r, c) * cList.size());
+    fill(cList.get(colorMap[i-1]).toARGB());
+    //    fill(getRandColor(gravityToClosestHill(row, col)));
     rect(0, 0, s, s);
     col++;    
     translate(s, 0);
@@ -109,7 +132,6 @@ float gravityToClosestHill(int row, int col) {
 color getRandColor(float g) {
   if (floor(random(0, 100/WHITE_PCT)) == 0) {
     return cList.getLightest().toARGB();
-    // return TColor.WHITE.toARGB();
   }
   int rnd = (int)random(map(g, 0, 100, 0, cList.size()-1), cList.size()-1);
   return cList.get(rnd).toARGB();
@@ -118,7 +140,7 @@ color getRandColor(float g) {
 
 void createColorList() {
   cList = ColorList.createUsingStrategy(currentTheory, currentColor);
-  cList = new ColorRange(cList).addBrightnessRange(0.5, 1).getColors(null, w*h, .5).sortByCriteria(AccessCriteria.LUMINANCE, true);
+  cList = new ColorRange(cList).addBrightnessRange(.1, 1).getColors(null, w*h, .5).sortByCriteria(AccessCriteria.LUMINANCE, true);
 }
 
 void randomizeColor() {
@@ -154,6 +176,10 @@ void keyPressed() {
   }  
   if (key == '-' && s > init_s) {
     s--;
+  }  
+  if (key == ' ') {
+    noiseSeed((int)random(1000));
+    colorMap = colorMap();
   }  
   if (key == 's') {
     save("quads_" + currentTheory.getName() + "_" + currentColor.toARGB() +".png");
