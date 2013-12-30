@@ -22,16 +22,19 @@ int s = init_s;
 // x, y, radius, gravity (0-100)
 int[][] magnets = {
   {
-    0, 0, 10, 50
+    0, 0, 10
   }
   , {
-    w, 0, 35, 80
+    0, 0, 10
+  }
+  , {    
+    w, 0, 20
   }
   , {
-    0, h, 35, 80
+    0, h, 20
   }
   , {
-    w, h, 35, 30
+    w, h, 20
   }
 };
 
@@ -65,7 +68,7 @@ int[] colorMap(ColorList cList) {
       n = random(1);
       map[i] = floor(map(n, 0, 1, 0, cList.size()-1));
     }
-   // map[i] = i;
+    // map[i] = i;
     //  println(map[i]);
     //exit();
   }
@@ -80,7 +83,7 @@ void draw() {
   h = int(w / 1.6);
   s = WIDTH/w;
   //
-    cList = createColorList(currentTheory, currentColor);
+  cList = createColorList(currentTheory, currentColor);
 
   paintQuads(cList);
   fill(currentColor.toARGB());
@@ -94,12 +97,20 @@ void draw() {
 void paintQuads(ColorList cList) {
   int row = 0;
   int col = 0;
+  int g;
 
   pushMatrix();
   for (int i = 1; i <= w*h; i++) {
 
-    fill(cList.get(i-1).toARGB());
-    //    fill(getRandColor(gravityToClosestHill(row, col)));
+    g = gravityToClosestMagnet(row, col);
+    if (g>0) {
+      fill(cList.get((int)random(g, cList.size()-1)).toARGB());
+    } 
+    else {
+      fill(cList.getRandom().toARGB());
+    }
+
+    //    fill(getRandColor(gravityToClosestMagnet(row, col)));
     rect(0, 0, s, s);
     col++;    
     translate(s, 0);
@@ -115,7 +126,7 @@ void paintQuads(ColorList cList) {
   popMatrix();
 }
 
-int gravityToClosestHill(int row, int col) {
+int gravityToClosestMagnet(int row, int col) {
   int d, x, y = 0;
   float g, max_g = 0;
 
@@ -125,7 +136,7 @@ int gravityToClosestHill(int row, int col) {
     d = (int)sqrt(pow(abs(row-y), 2) + pow(abs(col-x), 2));
 
     if (d>magnets[i][2]) {
-      g = -1;
+      g = 0;
     } 
     else {
       g = map(d, 0, magnets[i][2], cList.size()-1, 0);
@@ -147,7 +158,7 @@ color getRandColor(float g) {
 
 ColorList createColorList(ColorTheoryStrategy currentTheory, TColor currentColor) {
   ColorList c = ColorList.createUsingStrategy(currentTheory, currentColor);
-  return new ColorRange(c).getColors(null, w*h, 1);//.sortByCriteria(AccessCriteria.LUMINANCE, true);
+  return new ColorRange(c).getColors(null, w*h, 1).sortByCriteria(AccessCriteria.LUMINANCE, true);
 }
 
 TColor randomizeColor() {
