@@ -43,10 +43,10 @@ void setup() {
   noStroke();
   noLoop();
 
-  noiseDetail(2, .25);
+  noiseDetail(1, .05);
 
   colorStrategies = ColorTheoryRegistry.getRegisteredStrategies();
-  currentTheory = ColorTheoryRegistry.TRIAD;
+  currentTheory = ColorTheoryRegistry.MONOCHROME;
   randomizeColor();
   colorMap = colorMap();
   resetStrategy();
@@ -54,15 +54,22 @@ void setup() {
 
 int[] colorMap() {
   int[] map = new int[cList.size()];
+  float n;
   for (int i=0;i<cList.size();i++) {
-    float n = (float) i / cList.size();
+    //float n = (float) i / cList.size();
     if (floor(random(0, 100/WHITE_PCT)) == 0) {
-      map[i] = 0;
+      //map[i] = 0;
     } 
-    else {
-      map[i] = floor(noise(n*1500) * cList.size());
-    }
+    //else {
+    n = noise(i*0.001);
+
+    //map[i] = floor(n * cList.size());
+    map[i] = floor(map(n, 0, 1, 0, cList.size()-1));
+    //}
+    println(map[i]);
+    //exit();
   }
+  //println(map);
   return map;
 }
 
@@ -90,7 +97,7 @@ void paintQuads() {
     //println(rnd);
     float r = (float) row / h;
     float c = (float) col / w;
-    int rnd = floor(noise(r, c) * cList.size());
+   // int rnd = floor(noise(r, c) * cList.size());
     fill(cList.get(colorMap[i-1]).toARGB());
     //    fill(getRandColor(gravityToClosestHill(row, col)));
     rect(0, 0, s, s);
@@ -140,7 +147,7 @@ color getRandColor(float g) {
 
 void createColorList() {
   cList = ColorList.createUsingStrategy(currentTheory, currentColor);
-  cList = new ColorRange(cList).addBrightnessRange(.1, 1).getColors(null, w*h, .5).sortByCriteria(AccessCriteria.LUMINANCE, true);
+  cList = new ColorRange(cList).addBrightnessRange(.1, 1).addSaturationRange(0.5,1).getColors(null, w*h, .5).sortByCriteria(AccessCriteria.LUMINANCE, true);
 }
 
 void randomizeColor() {
