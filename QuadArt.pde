@@ -11,32 +11,40 @@ Iterator I_theories;
 PGraphics img;
 int[] colorMap;
 
-int WIDTH = 1024;
-int WHITE_PCT = 5;
+static final int WIDTH = 1024;
+static final int WHITE_PCT = 5;
+static final float MIN_COLOR_DIST = .2;
 
-int w = 50;
+int w = 32;
 int h = int(w / 1.6);
 int init_s = WIDTH/w;
 int s = init_s;
+boolean actGravity = true;
+boolean actOrder = false;
 
+float[][] magnets;
 // x, y, radius, gravity (0-100)
-int[][] magnets = {
-  {
-    0, 0, 10
-  }
-  , {
-    0, 0, 10
-  }
-  , {    
-    w, 0, 20
-  }
-  , {
-    0, h, 20
-  }
-  , {
-    w, h, 20
-  }
-};
+float[][] updateMagnets() {
+
+  float[][] magnets = {
+    {
+      0, 0, .35, .7
+    }
+    , {
+      0, 0, .35, .5
+    }
+    , {    
+      w, 0, .25, .6
+    }
+    , {
+      0, h, .25, .6
+    }
+    , {
+      w, h, .2, .75
+    }
+  };
+  return magnets;
+}
 
 
 
@@ -68,54 +76,66 @@ int[] colorMap(ColorList cList) {
       n = random(1);
       map[i] = floor(map(n, 0, 1, 0, cList.size()-1));
     }
-    // map[i] = i;
-    //  println(map[i]);
-    //exit();
   }
   return map;
 }
 
 void draw() {
-  magnets[0][0] = mouseX/s;
-  magnets[0][1] = mouseY/s;
   background(0); 
   noStroke();
   h = int(w / 1.6);
   s = WIDTH/w;
   //
   cList = createColorList(currentTheory, currentColor);
-
+  magnets = updateMagnets();
+  magnets[0][0] = mouseX/s;
+  magnets[0][1] = mouseY/s;
   paintQuads(cList);
+
   fill(currentColor.toARGB());
   rect(0, 0, s, s);
-  // magenet indicator
-  stroke(255, 0, 0);
-  noFill();
-  ellipse(mouseX, mouseY, magnets[0][2]*s, magnets[0][2]*s);
+  // magnet indicator
+//  noFill();
+//  stroke(255, 0, 0);
+//  ellipse(mouseX, mouseY, magnets[0][2]*w*s, magnets[0][2]*w*s);
 }
 
 void paintQuads(ColorList cList) {
   int row = 0;
   int col = 0;
   int g;
+  TColor c;
+  ColorList map = new ColorList();
 
   pushMatrix();
-  for (int i = 1; i <= w*h; i++) {
+  for (int i = 0; i < w*h; i++) {
 
     g = gravityToClosestMagnet(row, col);
-    if (g>0) {
-      fill(cList.get((int)random(g, cList.size()-1)).toARGB());
+
+    if (actOrder) {
+      c = cList.get(i-1);
     } 
     else {
-      fill(cList.getRandom().toARGB());
-    }
+      do {
 
-    //    fill(getRandColor(gravityToClosestMagnet(row, col)));
+        if (actGravity && g>0) {
+          c = cList.get((int)random(g, cList.size()-1));
+        } 
+        else {
+          c = cList.getRandom();
+        }
+      } 
+      while ( tooCloseColors (c, map, i, w));
+      // add color to map
+      map.add(c);
+    }
+    //define the fill color for the next quad
+    fill(c.toARGB());
     rect(0, 0, s, s);
     col++;    
     translate(s, 0);
 
-    if (i % w == 0) {
+    if ((i+1) % w == 0) {
       popMatrix();
       pushMatrix();
       row++;
@@ -126,20 +146,31 @@ void paintQuads(ColorList cList) {
   popMatrix();
 }
 
+boolean tooCloseColors(TColor c, ColorList map, int i, int w) {
+  if (i-w > 1) {
+    return min(c.distanceToRGB(map.get(i-1)), c.distanceToRGB(map.get(i-w))) < MIN_COLOR_DIST;
+  }  
+  if (i > 1) {
+    return c.distanceToRGB(map.get(i-1)) < MIN_COLOR_DIST;
+  }
+
+  return false;
+}
+
 int gravityToClosestMagnet(int row, int col) {
   int d, x, y = 0;
   float g, max_g = 0;
 
   for (int i=0;i<magnets.length;i++) {
-    x = magnets[i][0];
-    y = magnets[i][1];
+    x = (int)magnets[i][0];
+    y = (int)magnets[i][1];
     d = (int)sqrt(pow(abs(row-y), 2) + pow(abs(col-x), 2));
 
-    if (d>magnets[i][2]) {
+    if (d>magnets[i][2]*w) {
       g = 0;
     } 
     else {
-      g = map(d, 0, magnets[i][2], cList.size()-1, 0);
+      g = map(d, 0, magnets[i][2]*w, cList.size()*magnets[i][3]-1, 0);
     }
     max_g = max(g, max_g);
   }
@@ -158,7 +189,7 @@ color getRandColor(float g) {
 
 ColorList createColorList(ColorTheoryStrategy currentTheory, TColor currentColor) {
   ColorList c = ColorList.createUsingStrategy(currentTheory, currentColor);
-  return new ColorRange(c).getColors(null, w*h, 1).sortByCriteria(AccessCriteria.LUMINANCE, true);
+  return new ColorRange(c).getColors(w*h).sortByProximityTo(currentColor, false);
 }
 
 TColor randomizeColor() {
@@ -178,26 +209,36 @@ ColorTheoryStrategy nextTheory() {
 }
 
 void keyPressed() {
-  if (key == 'c') {
+
+  switch(key) {
+  case 'c':
     currentColor = randomizeColor();
-  }
-  if (key == 't') {
+    break;
+  case 't':
     currentTheory = nextTheory();
-  }  
-  if (key == '0') {
+    break;
+  case 'g':
+    actGravity = !actGravity; 
+    break;
+  case 'o':
+    actOrder = !actOrder; 
+    break;    
+  case '0':
     currentTheory = resetStrategy();
-  }   
-  //@todo creates ArrayIndexOutOfBoundsException
-  if (key == '+') {
-    //w++;
-  }  
-  if (key == '-' && w > 5) {
-    w--;
-  }  
-  if (key == 's') {
+    break;
+  case '+':
+    w++;
+    break;
+  case '-':
+    if (w > 5) {
+      w--;
+    }   
+    break;
+  case 's':
     save("quads_" + currentTheory.getName() + "_" + currentColor.toARGB() +".png");
-  }
-  //colorMap = colorMap(cList);
+    break;
+  }   
+
   redraw();
 }
 
