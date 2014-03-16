@@ -15,36 +15,19 @@ static final int WIDTH = 1024;
 static final int WHITE_PCT = 5;
 static final float MIN_COLOR_DIST = .2;
 
-int w = 32;
+int w = 64;
 int h = int(w / 1.6);
 int init_s = WIDTH/w;
 int s = init_s;
 boolean actGravity = true;
 boolean actOrder = false;
 
-float[][] magnets;
 // x, y, radius, gravity (0-100)
-float[][] updateMagnets() {
-
-  float[][] magnets = {
-    {
-      0, 0, .35, .7
-    }
-    , {
-      0, 0, .35, .5
-    }
-    , {    
-      w, 0, .25, .6
-    }
-    , {
-      0, h, .25, .6
-    }
-    , {
-      w, h, .2, .75
-    }
-  };
-  return magnets;
-}
+float[][] magnets = {
+  {
+    w/2, h/2, .5, .7
+  }
+};
 
 
 
@@ -87,17 +70,16 @@ void draw() {
   s = WIDTH/w;
   //
   cList = createColorList(currentTheory, currentColor);
-  magnets = updateMagnets();
-  magnets[0][0] = mouseX/s;
-  magnets[0][1] = mouseY/s;
+  //magnets[0][0] = mouseX/s;
+  //magnets[0][1] = mouseY/s;
   paintQuads(cList);
 
   fill(currentColor.toARGB());
   rect(0, 0, s, s);
   // magnet indicator
-//  noFill();
-//  stroke(255, 0, 0);
-//  ellipse(mouseX, mouseY, magnets[0][2]*w*s, magnets[0][2]*w*s);
+  //  noFill();
+  //  stroke(255, 0, 0);
+  //  ellipse(mouseX, mouseY, magnets[0][2]*w*s, magnets[0][2]*w*s);
 }
 
 void paintQuads(ColorList cList) {
@@ -113,7 +95,7 @@ void paintQuads(ColorList cList) {
     g = gravityToClosestMagnet(row, col);
 
     if (actOrder) {
-      c = cList.get(i-1);
+      c = cList.get(i);
     } 
     else {
       do {
@@ -189,7 +171,7 @@ color getRandColor(float g) {
 
 ColorList createColorList(ColorTheoryStrategy currentTheory, TColor currentColor) {
   ColorList c = ColorList.createUsingStrategy(currentTheory, currentColor);
-  return new ColorRange(c).getColors(w*h).sortByProximityTo(currentColor, false);
+  return new ColorRange(c).getColors(w*h).sortByProximityTo(currentColor, true);
 }
 
 TColor randomizeColor() {
@@ -242,7 +224,4 @@ void keyPressed() {
   redraw();
 }
 
-void mouseMoved() {
-  redraw();
-} 
 
